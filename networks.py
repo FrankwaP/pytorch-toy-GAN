@@ -100,8 +100,8 @@ loss = nn.BCELoss()
 batch_size = 10000
 noise_size = 100
 sample_size = 1000
-n_epoch = 100
-plot_step = 1
+n_epoch = 100000
+plot_step = 50
 
 D = get_discriminator(sample_size, 2**3, 1)
 D.to(device)
@@ -112,7 +112,7 @@ G.to(device)
 y_real = torch.ones((batch_size, 1)).to(device)
 y_fake = 1-y_real
 
-loss_limit = 0.11  # correspond to a 90% success mean: -ln(0.9) == 0.11
+loss_limit = 0.69  # correspond to a 90% success mean: -ln(0.9) == 0.11
 
 x_fake_comp = None
 y_fake_pred_comp = None
@@ -125,12 +125,8 @@ for epoch in range(n_epoch):
         # Discriminator loss on fake data (should be fake)
         z_fake = generate_noise(batch_size, noise_size)
         x_fake1 = G(z_fake)
-        # if old_x_fake1 is None:
         y_fake_pred1 = D(x_fake1)
         D_fake_loss = loss(y_fake_pred1, y_fake)
-        # else:            
-        #     y_fake_pred1 = D(torch.cat((x_fake1, old_x_fake1)))
-        #     D_fake_loss = loss(y_fake_pred1, torch.cat((y_fake, y_fake)))
         # Discriminator loss on real data (should be real)
         x_real = generate_real_data(batch_size, sample_size)
         y_real_pred = D(x_real)
@@ -145,7 +141,9 @@ for epoch in range(n_epoch):
         ###
         print('Epoch [%d/%d], D_real_loss: %5.2f, D_fake_loss: %5.2f, D_loss: %5.2f, G_loss: %5s'
               % (epoch+1, n_epoch, D_real_loss.data, D_fake_loss.data, D_loss.data, ''))
-    old_x_fake1 = x_fake1.detach()
+    if x_fake_comp is None:
+        x_fake_comp = x_fake1
+        y_fake_pred_comp = y_fake_pred1
     # Training the Generator
     loss_chk = 2*loss_limit
     G_optim = Adam(G.parameters(), lr=0.0002, betas=(0.5, 0.999))
@@ -164,12 +162,9 @@ for epoch in range(n_epoch):
         print('Epoch [%d/%d], D_real_loss: %5s, D_fake_loss: %5s, D_loss: %5s, G_loss: %5.2f'
               % (epoch+1, n_epoch, '', '', '', G_loss.data))
     if ((epoch+1) % plot_step) == 0:
-        if x_fake_comp is None:
-            x_fake_comp = x_fake1
-            y_fake_pred_comp = y_fake_pred1
         results_to_seaborn_plot()
-        x_fake_comp = x_fake2
-        y_fake_pred_comp = y_fake_pred2
+        x_fake_comp = x_fake1
+        y_fake_pred_comp = y_fake_pred1
 
 
 #%%
